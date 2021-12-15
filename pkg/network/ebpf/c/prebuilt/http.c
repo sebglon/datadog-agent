@@ -18,22 +18,13 @@ static __always_inline int is_ephemeral_port(u16 port) {
     return port >= EPHEMERAL_RANGE_BEG && port <= EPHEMERAL_RANGE_END;
 }
 
-static __always_inline void read_skb_data(struct __sk_buff* skb, u32 offset, char *buffer) {
-    if (skb->len - offset < HTTP_BUFFER_SIZE) {
-        return;
-    }
-
-#pragma unroll
-    for (int i = 0; i < HTTP_BUFFER_SIZE; i++) {
-        buffer[i] = load_byte(skb, offset + i);
-    }
-}
-
 SEC("socket/http_filter")
 int socket__http_filter(struct __sk_buff* skb) {
     skb_info_t skb_info;
+    http_transaction_t http;
+    __builtin_memset(&http, 0, sizeof(http));
 
-    if (!read_conn_tuple_skb(skb, &skb_info)) {
+    if (!read_conn_tuple_skb(skb, &skb_info, &http.tup)) {
         return 0;
     }
 
@@ -41,27 +32,30 @@ int socket__http_filter(struct __sk_buff* skb) {
     // make sure we pass it on to `http_process` to ensure that any ongoing transaction is flushed.
     // Otherwise, don't bother to inspect packet contents
     // when there is no chance we're dealing with plain HTTP (or a finishing HTTPS socket)
-    if (!(skb_info.tup.metadata&CONN_TYPE_TCP)) {
+    if (!(http.tup.metadata&CONN_TYPE_TCP)) {
         return 0;
     }
-    if ((skb_info.tup.sport == HTTPS_PORT || skb_info.tup.dport == HTTPS_PORT) && !(skb_info.tcp_flags & TCPHDR_FIN)) {
+    if ((http.tup.sport == HTTPS_PORT || http.tup.dport == HTTPS_PORT) && !(skb_info.tcp_flags & TCPHDR_FIN)) {
         return 0;
     }
 
     // src_port represents the source port number *before* normalization
     // for more context please refer to http-types.h comment on `owned_by_src_port` field
-    u16 src_port = skb_info.tup.sport;
+    http.owned_by_src_port = http.tup.sport;
 
     // we normalize the tuple to always be (client, server),
     // so if sport is not in ephemeral port range we flip it
-    if (!is_ephemeral_port(skb_info.tup.sport)) {
-        flip_tuple(&skb_info.tup);
+    if (!is_ephemeral_port(http.tup.sport)) {
+        flip_tuple(&http.tup);
     }
 
-    char buffer[HTTP_BUFFER_SIZE];
-    __builtin_memset(buffer, 0, sizeof(buffer));
-    read_skb_data(skb, skb_info.data_off, buffer);
-    http_process(buffer, &skb_info, src_port);
+    // REMOVE THIS!
+    if (http.tup.dport != 80 && http.tup.dport != 8080) {
+        return 0;
+    }
+
+    read_into_buffer_skb((char *)http.request_fragment, skb, &skb_info);
+    http_process(&http, &skb_info);
     return 0;
 }
 
@@ -197,12 +191,14 @@ int uretprobe__SSL_read(struct pt_regs* ctx) {
     }
 
     u32 len = (u32)PT_REGS_RC(ctx);
-    char buffer[HTTP_BUFFER_SIZE];
-    read_into_buffer(buffer, args->buf, len);
 
+    http_transaction_t http;
     skb_info_t skb_info = {0};
-    __builtin_memcpy(&skb_info.tup, t, sizeof(conn_tuple_t));
-    http_process(buffer, &skb_info, skb_info.tup.sport);
+    __builtin_memset(&http, 0, sizeof(http));
+    __builtin_memcpy(&http.tup, t, sizeof(conn_tuple_t));
+    read_into_buffer((char *)http.request_fragment, args->buf, len);
+
+    http_process(&http, &skb_info);
  cleanup:
     bpf_map_delete_elem(&ssl_read_args, &pid_tgid);
     return 0;
@@ -219,12 +215,14 @@ int uprobe__SSL_write(struct pt_regs* ctx) {
 
     void *ssl_buffer = (void *)PT_REGS_PARM2(ctx);
     size_t len = (size_t)PT_REGS_PARM3(ctx);
-    char buffer[HTTP_BUFFER_SIZE];
-    read_into_buffer(buffer, ssl_buffer, len);
 
+    http_transaction_t http;
     skb_info_t skb_info = {0};
-    __builtin_memcpy(&skb_info.tup, t, sizeof(conn_tuple_t));
-    http_process(buffer, &skb_info, skb_info.tup.sport);
+    __builtin_memset(&http, 0, sizeof(http));
+    __builtin_memcpy(&http.tup, t, sizeof(conn_tuple_t));
+    read_into_buffer((char *)http.request_fragment, ssl_buffer, len);
+
+    http_process(&http, &skb_info);
     return 0;
 }
 
@@ -237,15 +235,14 @@ int uprobe__SSL_shutdown(struct pt_regs* ctx) {
         return 0;
     }
 
-    char buffer[HTTP_BUFFER_SIZE];
-    __builtin_memset(buffer, 0, sizeof(buffer));
-
+    http_transaction_t http;
     skb_info_t skb_info = {0};
-    __builtin_memcpy(&skb_info.tup, t, sizeof(conn_tuple_t));
+    __builtin_memset(&http, 0, sizeof(http));
+    __builtin_memcpy(&http.tup, t, sizeof(conn_tuple_t));
 
     // TODO: this is just a hack. Let's get rid of this skb_info argument altogether
     skb_info.tcp_flags |= TCPHDR_FIN;
-    http_process(buffer, &skb_info, skb_info.tup.sport);
+    http_process(&http, &skb_info);
     bpf_map_delete_elem(&ssl_sock_by_ctx, &ssl_ctx);
     return 0;
 }
@@ -326,12 +323,13 @@ int uretprobe__gnutls_record_recv(struct pt_regs* ctx) {
         goto cleanup;
     }
 
-    char buffer[HTTP_BUFFER_SIZE];
-    read_into_buffer(buffer, args->buf, read_len);
-
+    http_transaction_t http;
     skb_info_t skb_info = {0};
-    __builtin_memcpy(&skb_info.tup, t, sizeof(conn_tuple_t));
-    http_process(buffer, &skb_info, skb_info.tup.sport);
+    __builtin_memset(&http, 0, sizeof(http));
+    __builtin_memcpy(&http.tup, t, sizeof(conn_tuple_t));
+    read_into_buffer((char *)http.request_fragment, args->buf, read_len);
+
+    http_process(&http, &skb_info);
  cleanup:
     bpf_map_delete_elem(&ssl_read_args, &pid_tgid);
     return 0;
@@ -350,12 +348,13 @@ int uprobe__gnutls_record_send(struct pt_regs* ctx) {
         return 0;
     }
 
-    char buffer[HTTP_BUFFER_SIZE];
-    read_into_buffer(buffer, data, data_size);
-
+    http_transaction_t http;
     skb_info_t skb_info = {0};
-    __builtin_memcpy(&skb_info.tup, t, sizeof(conn_tuple_t));
-    http_process(buffer, &skb_info, skb_info.tup.sport);
+    __builtin_memset(&http, 0, sizeof(http));
+    __builtin_memcpy(&http.tup, t, sizeof(conn_tuple_t));
+    read_into_buffer((char *)http.request_fragment, data, data_size);
+
+    http_process(&http, &skb_info);
     return 0;
 }
 
@@ -370,15 +369,15 @@ int uprobe__gnutls_bye(struct pt_regs* ctx) {
         return 0;
     }
 
-    char buffer[HTTP_BUFFER_SIZE];
-    __builtin_memset(buffer, 0, sizeof(buffer));
+    http_transaction_t http;
+    __builtin_memset(&http, 0, sizeof(http));
 
     skb_info_t skb_info = {0};
-    __builtin_memcpy(&skb_info.tup, t, sizeof(conn_tuple_t));
+    __builtin_memcpy(&http.tup, t, sizeof(conn_tuple_t));
 
     // TODO: this is just a hack. Let's get rid of this skb_info argument altogether
     skb_info.tcp_flags |= TCPHDR_FIN;
-    http_process(buffer, &skb_info, skb_info.tup.sport);
+    http_process(&http, &skb_info);
     bpf_map_delete_elem(&ssl_sock_by_ctx, &ssl_session);
     return 0;
 }

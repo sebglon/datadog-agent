@@ -26,3 +26,24 @@ static __always_inline void read_into_buffer(char *buffer, char *data, size_t da
 }
 
 #endif
+
+static __always_inline void read_into_buffer_skb(char *buffer, struct __sk_buff* skb, skb_info_t *info) {
+    u64 offset = (u64)info->data_off;
+
+#pragma unroll
+    for (int i = 0; i < HTTP_BUFFER_SIZE; i++) {
+        if (offset < skb->len) {
+            asm("r8 = *(u64 *) %0" : : "m"(offset));
+            asm("r0 = 0");
+            asm("r0 = *(u8 *)skb[r8]");
+            asm("*(u8 *)%0 = r0" : "=m"(buffer[i]));
+
+            asm("r1 = 0");
+            asm("r2 = 0");
+            asm("r3 = 0");
+            asm("r4 = 0");
+            asm("r5 = 0");
+        }
+        offset++;
+    }
+}

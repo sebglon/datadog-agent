@@ -155,6 +155,13 @@ func (e *ebpfProgram) Init() error {
 		s.ConfigureOptions(&options)
 	}
 
+	// Enable more space to verifier logs
+	options.VerifierOptions = ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			LogSize: 1024 * 1024 * 10,
+		},
+	}
+
 	err := e.InitWithOptions(e.bytecode, options)
 	if err != nil {
 		return err
