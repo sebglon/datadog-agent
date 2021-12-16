@@ -19,6 +19,7 @@ import (
 
 func installCloudFoundryMetadataEndpoints(r *mux.Router) {
 	r.HandleFunc("/tags/cf/apps/{nodeName}", getCFAppsMetadataForNode).Methods("GET")
+	r.HandleFunc("/tags/cf/apps/", getCFAppsMetadataForAllNodes).Methods("GET")
 }
 
 func installKubernetesMetadataEndpoints(r *mux.Router) {}
@@ -62,6 +63,49 @@ func getCFAppsMetadataForNode(w http.ResponseWriter, r *http.Request) {
 		w.Write(tagsBytes)
 		apiRequests.Inc(
 			"getCFAppsMetadataForNode",
+			strconv.Itoa(http.StatusOK),
+		)
+		return
+	}
+}
+
+// getCFAppsMetadataForAllNodes is only used when the node agent hits the DCA for the list of cloudfoundry applications tags
+// It return a list of tags for each application that can be directly used in the tagger
+func getCFAppsMetadataForAllNodes(w http.ResponseWriter, r *http.Request) {
+	ccCache, err := cloudfoundry.GetGlobalCCCache()
+	if err != nil {
+		log.Errorf("Could not retrieve CC cache: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc("getCFAppsMetadataForAllNodes", strconv.Itoa(http.StatusInternalServerError))
+		return
+	}
+
+	apps, err := ccCache.GetApps()
+	if err != nil {
+		log.Errorf("Error getting applications: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"getCFAppsMetadataForAllNodes",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+
+	appsBytes, err := json.Marshal(apps)
+	if err != nil {
+		log.Errorf("Could not process CF applications: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"getCFAppsMetadataForAllNodes",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+	if len(appsBytes) > 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write(appsBytes)
+		apiRequests.Inc(
+			"getCFAppsMetadataForAllNodes",
 			strconv.Itoa(http.StatusOK),
 		)
 		return

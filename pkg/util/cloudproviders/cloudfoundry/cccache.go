@@ -120,9 +120,23 @@ func (ccc *CCCache) UpdatedOnce() <-chan struct{} {
 }
 
 // GetApp looksf or an app with the given GUID in the cache
+func (ccc *CCCache) GetApps() ([]*CFApp, error) {
+	ccc.RLock()
+	defer ccc.RUnlock()
+
+	var apps []*CFApp
+	for _, app := range ccc.appsByGUID {
+		apps = append(apps, app)
+	}
+
+	return apps, nil
+}
+
+// GetApp looksf or an app with the given GUID in the cache
 func (ccc *CCCache) GetApp(guid string) (*CFApp, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
+
 	app, ok := ccc.appsByGUID[guid]
 	if !ok {
 		return nil, fmt.Errorf("could not find app %s in cloud controller cache", guid)
