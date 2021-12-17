@@ -19,7 +19,9 @@ import (
 
 func installCloudFoundryMetadataEndpoints(r *mux.Router) {
 	r.HandleFunc("/tags/cf/apps/{nodeName}", getCFAppsMetadataForNode).Methods("GET")
-	r.HandleFunc("/tags/cf/apps/", getCFAppsMetadataForAllNodes).Methods("GET")
+	r.HandleFunc("/cf/apps/", listCFApplications).Methods("GET")
+	r.HandleFunc("/cf/spaces/", listCFSpaces).Methods("GET")
+	r.HandleFunc("/cf/orgs/", listCFOrgs).Methods("GET")
 }
 
 func installKubernetesMetadataEndpoints(r *mux.Router) {}
@@ -69,14 +71,14 @@ func getCFAppsMetadataForNode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getCFAppsMetadataForAllNodes is only used when the node agent hits the DCA for the list of cloudfoundry applications tags
-// It return a list of tags for each application that can be directly used in the tagger
-func getCFAppsMetadataForAllNodes(w http.ResponseWriter, r *http.Request) {
+// listCFApplications TODO
+// TODO
+func listCFApplications(w http.ResponseWriter, r *http.Request) {
 	ccCache, err := cloudfoundry.GetGlobalCCCache()
 	if err != nil {
 		log.Errorf("Could not retrieve CC cache: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc("getCFAppsMetadataForAllNodes", strconv.Itoa(http.StatusInternalServerError))
+		apiRequests.Inc("listCFApplications", strconv.Itoa(http.StatusInternalServerError))
 		return
 	}
 
@@ -85,7 +87,7 @@ func getCFAppsMetadataForAllNodes(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("Error getting applications: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		apiRequests.Inc(
-			"getCFAppsMetadataForAllNodes",
+			"listCFApplications",
 			strconv.Itoa(http.StatusInternalServerError),
 		)
 		return
@@ -96,7 +98,7 @@ func getCFAppsMetadataForAllNodes(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("Could not process CF applications: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		apiRequests.Inc(
-			"getCFAppsMetadataForAllNodes",
+			"listCFApplications",
 			strconv.Itoa(http.StatusInternalServerError),
 		)
 		return
@@ -105,7 +107,93 @@ func getCFAppsMetadataForAllNodes(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(appsBytes)
 		apiRequests.Inc(
-			"getCFAppsMetadataForAllNodes",
+			"listCFApplications",
+			strconv.Itoa(http.StatusOK),
+		)
+		return
+	}
+}
+
+// listCFSpaces TODO
+// TODO
+func listCFSpaces(w http.ResponseWriter, r *http.Request) {
+	ccCache, err := cloudfoundry.GetGlobalCCCache()
+	if err != nil {
+		log.Errorf("Could not retrieve CC cache: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc("listCFSpaces", strconv.Itoa(http.StatusInternalServerError))
+		return
+	}
+
+	spaces, err := ccCache.GetSpaces()
+	if err != nil {
+		log.Errorf("Error getting spaces: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"listCFSpaces",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+
+	spacesBytes, err := json.Marshal(spaces)
+	if err != nil {
+		log.Errorf("Could not process CF spaces: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"listCFSpaces",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+	if len(spacesBytes) > 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write(spacesBytes)
+		apiRequests.Inc(
+			"listCFSpaces",
+			strconv.Itoa(http.StatusOK),
+		)
+		return
+	}
+}
+
+// listCFOrgs TODO
+// TODO
+func listCFOrgs(w http.ResponseWriter, r *http.Request) {
+	ccCache, err := cloudfoundry.GetGlobalCCCache()
+	if err != nil {
+		log.Errorf("Could not retrieve CC cache: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc("listCFOrgs", strconv.Itoa(http.StatusInternalServerError))
+		return
+	}
+
+	orgs, err := ccCache.GetOrgs()
+	if err != nil {
+		log.Errorf("Error getting organizations: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"listCFOrgs",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+
+	orgsBytes, err := json.Marshal(orgs)
+	if err != nil {
+		log.Errorf("Could not process CF organizations: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"listCFOrgs",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+	if len(orgsBytes) > 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write(orgsBytes)
+		apiRequests.Inc(
+			"listCFOrgs",
 			strconv.Itoa(http.StatusOK),
 		)
 		return

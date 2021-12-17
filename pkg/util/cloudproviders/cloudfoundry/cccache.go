@@ -43,9 +43,9 @@ type CCCache struct {
 	pollInterval  time.Duration
 	lastUpdated   time.Time
 	updatedOnce   chan struct{}
-	appsByGUID    map[string]*CFApp
-	orgsByGUID    map[string]*CFOrg
-	spacesByGUID  map[string]*CFSpace
+	appsByGUID    map[string]*cfclient.V3App
+	orgsByGUID    map[string]*cfclient.V3Organization
+	spacesByGUID  map[string]*cfclient.V3Space
 	appsBatchSize int
 }
 
@@ -120,11 +120,11 @@ func (ccc *CCCache) UpdatedOnce() <-chan struct{} {
 }
 
 // GetApp looksf or an app with the given GUID in the cache
-func (ccc *CCCache) GetApps() ([]*CFApp, error) {
+func (ccc *CCCache) GetApps() ([]*cfclient.V3App, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 
-	var apps []*CFApp
+	var apps []*cfclient.V3App
 	for _, app := range ccc.appsByGUID {
 		apps = append(apps, app)
 	}
@@ -132,8 +132,34 @@ func (ccc *CCCache) GetApps() ([]*CFApp, error) {
 	return apps, nil
 }
 
+// GetSpaces TODO
+func (ccc *CCCache) GetSpaces() ([]*cfclient.V3Space, error) {
+	ccc.RLock()
+	defer ccc.RUnlock()
+
+	var spaces []*cfclient.V3Space
+	for _, app := range ccc.spacesByGUID {
+		spaces = append(spaces, app)
+	}
+
+	return spaces, nil
+}
+
+// GetOrgs TODO
+func (ccc *CCCache) GetOrgs() ([]*cfclient.V3Organization, error) {
+	ccc.RLock()
+	defer ccc.RUnlock()
+
+	var orgs []*cfclient.V3Organization
+	for _, app := range ccc.orgsByGUID {
+		orgs = append(orgs, app)
+	}
+
+	return orgs, nil
+}
+
 // GetApp looksf or an app with the given GUID in the cache
-func (ccc *CCCache) GetApp(guid string) (*CFApp, error) {
+func (ccc *CCCache) GetApp(guid string) (*cfclient.V3App, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 
@@ -144,7 +170,7 @@ func (ccc *CCCache) GetApp(guid string) (*CFApp, error) {
 	return app, nil
 }
 
-func (ccc *CCCache) GetSpace(guid string) (*CFSpace, error) {
+func (ccc *CCCache) GetSpace(guid string) (*cfclient.V3Space, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 	space, ok := ccc.spacesByGUID[guid]
@@ -154,7 +180,7 @@ func (ccc *CCCache) GetSpace(guid string) (*CFSpace, error) {
 	return space, nil
 }
 
-func (ccc *CCCache) GetOrg(guid string) (*CFOrg, error) {
+func (ccc *CCCache) GetOrg(guid string) (*cfclient.V3Organization, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 	org, ok := ccc.orgsByGUID[guid]
@@ -184,7 +210,7 @@ func (ccc *CCCache) readData() {
 
 	// List applications
 	wg.Add(1)
-	var appsByGUID map[string]*CFApp
+	var appsByGUID map[string]*cfclient.V3App
 	go func() {
 		defer wg.Done()
 		query := url.Values{}
@@ -194,15 +220,15 @@ func (ccc *CCCache) readData() {
 			log.Errorf("Failed listing apps from cloud controller: %v", err)
 			return
 		}
-		appsByGUID = make(map[string]*CFApp, len(apps))
+		appsByGUID = make(map[string]*cfclient.V3App, len(apps))
 		for _, app := range apps {
-			appsByGUID[app.GUID] = CFAppFromV3App(&app)
+			appsByGUID[app.GUID] = &app
 		}
 	}()
 
 	// List spaces
 	wg.Add(1)
-	var spacesByGUID map[string]*CFSpace
+	var spacesByGUID map[string]*cfclient.V3Space
 	go func() {
 		defer wg.Done()
 		query := url.Values{}
@@ -212,15 +238,15 @@ func (ccc *CCCache) readData() {
 			log.Errorf("Failed listing spaces from cloud controller: %v", err)
 			return
 		}
-		spacesByGUID = make(map[string]*CFSpace, len(spaces))
+		spacesByGUID = make(map[string]*cfclient.V3Space, len(spaces))
 		for _, space := range spaces {
-			spacesByGUID[space.GUID] = CFSpaceFromV3Space(&space)
+			spacesByGUID[space.GUID] = &space
 		}
 	}()
 
 	// List orgs
 	wg.Add(1)
-	var orgsByGUID map[string]*CFOrg
+	var orgsByGUID map[string]*cfclient.V3Organization
 	go func() {
 		defer wg.Done()
 		query := url.Values{}
@@ -230,9 +256,9 @@ func (ccc *CCCache) readData() {
 			log.Errorf("Failed listing orgs from cloud controller: %v", err)
 			return
 		}
-		orgsByGUID = make(map[string]*CFOrg, len(orgs))
+		orgsByGUID = make(map[string]*cfclient.V3Organization, len(orgs))
 		for _, org := range orgs {
-			orgsByGUID[org.GUID] = CFOrgFromV3Organization(&org)
+			orgsByGUID[org.GUID] = &org
 		}
 	}()
 
