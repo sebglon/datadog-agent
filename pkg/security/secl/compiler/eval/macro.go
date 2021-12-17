@@ -32,6 +32,7 @@ type MacroEvaluator struct {
 	FieldValues map[Field][]FieldValue
 }
 
+// NewMacro returns a new macro
 func NewMacro(id, expression string, model Model, opts *Opts) (*Macro, error) {
 	macro := &Macro{
 		ID:   id,
@@ -39,16 +40,17 @@ func NewMacro(id, expression string, model Model, opts *Opts) (*Macro, error) {
 	}
 
 	if err := macro.Parse(expression); err != nil {
-		return nil, fmt.Errorf("syntax error: +w", err)
+		return nil, fmt.Errorf("syntax error: %w", err)
 	}
 
 	if err := macro.GenEvaluator(expression, model, opts); err != nil {
-		return nil, fmt.Errorf("compilation error: +w", err)
+		return nil, fmt.Errorf("compilation error: %w", err)
 	}
 
 	return macro, nil
 }
 
+// NewStringValuesMacro returns a new macro of string values
 func NewStringValuesMacro(id string, values []string, opts *Opts) (*Macro, error) {
 	var evaluator StringValuesEvaluator
 	for _, value := range values {

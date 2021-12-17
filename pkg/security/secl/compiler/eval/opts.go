@@ -37,3 +37,9 @@ func (o *Opts) WithUserContext(ctx interface{}) *Opts {
 	o.UserCtx = ctx
 	return o
 }
+
+// WithMacros set user macros
+func (o *Opts) WithMacros(macros map[MacroID]*Macro) *Opts {
+	o.Macros = macros
+	return o
+}

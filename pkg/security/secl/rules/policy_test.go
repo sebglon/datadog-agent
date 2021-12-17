@@ -6,10 +6,12 @@
 package rules
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +31,13 @@ func savePolicy(filename string, testPolicy *Policy) error {
 
 func TestMacroMerge(t *testing.T) {
 	enabled := map[eval.EventType]bool{"*": true}
-	rs := NewRuleSet(&testModel{}, func() eval.Event { return &testEvent{} }, NewOptsWithParams(testConstants, testSupportedDiscarders, enabled, nil, nil, nil))
+	var opts Opts
+	opts.
+		WithConstants(testConstants).
+		WithSupportedDiscarders(testSupportedDiscarders).
+		WithEventTypeEnabled(enabled).
+		WithMacros(make(map[eval.MacroID]*eval.Macro))
+	rs := NewRuleSet(&testModel{}, func() eval.Event { return &testEvent{} }, &opts)
 	testPolicy := &Policy{
 		Name: "test-policy",
 		Macros: []*MacroDefinition{{
@@ -77,7 +85,13 @@ func TestMacroMerge(t *testing.T) {
 
 func TestRuleMerge(t *testing.T) {
 	enabled := map[eval.EventType]bool{"*": true}
-	rs := NewRuleSet(&testModel{}, func() eval.Event { return &testEvent{} }, NewOptsWithParams(testConstants, testSupportedDiscarders, enabled, nil, nil, nil))
+	var opts Opts
+	opts.
+		WithConstants(testConstants).
+		WithSupportedDiscarders(testSupportedDiscarders).
+		WithEventTypeEnabled(enabled).
+		WithMacros(make(map[eval.MacroID]*eval.Macro))
+	rs := NewRuleSet(&testModel{}, func() eval.Event { return &testEvent{} }, &opts)
 
 	testPolicy := &Policy{
 		Name: "test-policy",
@@ -126,7 +140,13 @@ func TestRuleMerge(t *testing.T) {
 
 func TestMacroInRuleMerge(t *testing.T) {
 	enabled := map[eval.EventType]bool{"*": true}
-	rs := NewRuleSet(&testModel{}, func() eval.Event { return &testEvent{} }, NewOptsWithParams(testConstants, testSupportedDiscarders, enabled, nil, nil, nil))
+	var opts Opts
+	opts.
+		WithConstants(testConstants).
+		WithSupportedDiscarders(testSupportedDiscarders).
+		WithEventTypeEnabled(enabled).
+		WithMacros(make(map[eval.MacroID]*eval.Macro))
+	rs := NewRuleSet(&testModel{}, func() eval.Event { return &testEvent{} }, &opts)
 
 	testPolicy := &Policy{
 		Name: "test-policy",
@@ -156,5 +176,155 @@ func TestMacroInRuleMerge(t *testing.T) {
 	rule := rs.GetRules()["test_rule"]
 	if rule == nil {
 		t.Fatal("failed to find test_rule in ruleset")
+	}
+}
+
+type testStateScope struct {
+	vars map[string]map[string]interface{}
+}
+
+func (t *testStateScope) GetVariable(name string, value interface{}) (eval.VariableValue, error) {
+	switch value.(type) {
+	case int:
+		intVar := eval.NewIntVariable(func(ctx *eval.Context) int {
+			processName := (*testEvent)(ctx.Object).process.name
+			processVars, found := t.vars[processName]
+			if !found {
+				return 0
+			}
+
+			v, found := processVars[name]
+			if !found {
+				return 0
+			}
+
+			i, _ := v.(int)
+			return i
+		}, func(ctx *eval.Context, value interface{}) error {
+			processName := (*testEvent)(ctx.Object).process.name
+			if _, found := t.vars[processName]; !found {
+				t.vars[processName] = map[string]interface{}{}
+			}
+
+			t.vars[processName][name] = value
+			return nil
+		})
+		return intVar, nil
+	default:
+		return nil, fmt.Errorf("unsupported variable '%s'", name)
+	}
+}
+
+func TestActionSetVariable(t *testing.T) {
+	enabled := map[eval.EventType]bool{"*": true}
+	stateScopes := map[Scope]StateScope{
+		"process": &testStateScope{
+			vars: map[string]map[string]interface{}{},
+		},
+	}
+	var opts Opts
+	opts.
+		WithConstants(testConstants).
+		WithSupportedDiscarders(testSupportedDiscarders).
+		WithEventTypeEnabled(enabled).
+		WithVariables(make(map[string]eval.VariableValue)).
+		WithStateScopes(stateScopes).
+		WithMacros(make(map[eval.MacroID]*eval.Macro))
+	rs := NewRuleSet(&testModel{}, func() eval.Event { return &testEvent{} }, &opts)
+
+	testPolicy := &Policy{
+		Name: "test-policy",
+		Rules: []*RuleDefinition{{
+			ID:         "test_rule",
+			Expression: `open.filename == "/tmp/test"`,
+			Actions: []ActionDefinition{{
+				Set: &SetDefinition{
+					Name:  "var1",
+					Value: true,
+				},
+			}, {
+				Set: &SetDefinition{
+					Name:  "var2",
+					Value: "value",
+				},
+			}, {
+				Set: &SetDefinition{
+					Name:  "var3",
+					Value: 123,
+				},
+			}, {
+				Set: &SetDefinition{
+					Name:  "var4",
+					Value: 123,
+					Scope: "process",
+				},
+			}, {
+				Set: &SetDefinition{
+					Name: "var5",
+					Value: []string{
+						"val1",
+					},
+				},
+			}, {
+				Set: &SetDefinition{
+					Name: "var6",
+					Value: []int{
+						123,
+					},
+				},
+			}},
+		}, {
+			ID:         "test_rule2",
+			Expression: `open.filename == "/tmp/test2" && ${var1} == true && "${var2}" == "value" && ${var2} == "value" && ${var3} == 123 && ${process.var4} == 123 && "val1" in ${var5} && 123 in ${var6}`,
+		}},
+	}
+
+	tmpDir, err := ioutil.TempDir("", "test-policy")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := savePolicy(filepath.Join(tmpDir, "test.policy"), testPolicy); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := LoadPolicies(tmpDir, rs); err != nil {
+		t.Error(err)
+	}
+
+	rule := rs.GetRules()["test_rule"]
+	if rule == nil {
+		t.Fatal("failed to find test_rule in ruleset")
+	}
+
+	fmt.Printf("%+v\n", rs.opts.Constants)
+
+	event := &testEvent{
+		process: testProcess{
+			uid:  0,
+			name: "myprocess",
+		},
+	}
+
+	ev1 := *event
+	ev1.kind = "open"
+	ev1.open = testOpen{
+		filename: "/tmp/test2",
+		flags:    syscall.O_RDONLY,
+	}
+
+	if rs.Evaluate(event) {
+		t.Errorf("Expected event to match no rule")
+	}
+
+	ev1.open.filename = "/tmp/test"
+
+	if !rs.Evaluate(&ev1) {
+		t.Errorf("Expected event to match rule")
+	}
+
+	ev1.open.filename = "/tmp/test2"
+	if !rs.Evaluate(&ev1) {
+		t.Errorf("Expected event to match rule")
 	}
 }
