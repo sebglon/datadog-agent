@@ -8,7 +8,7 @@ import (
 
 	"fmt"
 
-	"github.com/DataDog/ebpf"
+	"github.com/cilium/ebpf"
 )
 
 /*
