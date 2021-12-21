@@ -306,7 +306,7 @@ func TestRuleSetFilters2(t *testing.T) {
 	}
 
 	if _, exists := approvers["process.uid"]; exists {
-		t.Fatal("shouldn't an approver for uid")
+		t.Fatal("no approver for uid should exist")
 	}
 
 	if _, exists := approvers["process.gid"]; !exists {
