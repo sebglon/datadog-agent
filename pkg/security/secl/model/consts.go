@@ -282,6 +282,8 @@ var (
 		"PTRACE_CONT":       unix.PTRACE_CONT,
 		"PTRACE_KILL":       unix.PTRACE_KILL,
 		"PTRACE_SINGLESTEP": unix.PTRACE_SINGLESTEP,
+		"PTRACE_GETREGS":    unix.PTRACE_GETREGS,
+		"PTRACE_SETREGS":    unix.PTRACE_SETREGS,
 		"PTRACE_ATTACH":     unix.PTRACE_ATTACH,
 		"PTRACE_DETACH":     unix.PTRACE_DETACH,
 		"PTRACE_SYSCALL":    unix.PTRACE_SYSCALL,
@@ -351,7 +353,6 @@ var (
 		"MAP_SHARED":          unix.MAP_SHARED,          /* Share changes */
 		"MAP_PRIVATE":         unix.MAP_PRIVATE,         /* Changes are private */
 		"MAP_SHARED_VALIDATE": unix.MAP_SHARED_VALIDATE, /* share + validate extension flags */
-		"MAP_32BIT":           unix.MAP_32BIT,           /* only give out 32bit addresses */
 		"MAP_ANON":            unix.MAP_ANON,
 		"MAP_ANONYMOUS":       unix.MAP_ANONYMOUS,       /* don't use a file */
 		"MAP_DENYWRITE":       unix.MAP_DENYWRITE,       /* ETXTBSY */
@@ -848,6 +849,10 @@ func initProtConstansts() {
 }
 
 func initMMapFlagsConstants() {
+	for k, v := range mmapFlagArchConstants {
+		mmapFlagConstants[k] = v
+	}
+
 	for k, v := range mmapFlagConstants {
 		SECLConstants[k] = &eval.IntEvaluator{Value: v}
 	}
