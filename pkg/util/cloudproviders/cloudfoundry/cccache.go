@@ -37,22 +37,24 @@ type CCCacheI interface {
 // CCCache is a simple structure that caches and automatically refreshes data from Cloud Foundry API
 type CCCache struct {
 	sync.RWMutex
-	cancelContext context.Context
-	configured    bool
-	ccAPIClient   CCClientI
-	pollInterval  time.Duration
-	lastUpdated   time.Time
-	updatedOnce   chan struct{}
-	appsByGUID    map[string]*cfclient.V3App
-	orgsByGUID    map[string]*cfclient.V3Organization
-	spacesByGUID  map[string]*cfclient.V3Space
-	appsBatchSize int
+	cancelContext   context.Context
+	configured      bool
+	ccAPIClient     CCClientI
+	pollInterval    time.Duration
+	lastUpdated     time.Time
+	updatedOnce     chan struct{}
+	appsByGUID      map[string]*cfclient.V3App
+	orgsByGUID      map[string]*cfclient.V3Organization
+	spacesByGUID    map[string]*cfclient.V3Space
+	processesByGUID map[string]*cfclient.Process
+	appsBatchSize   int
 }
 
 type CCClientI interface {
 	ListV3AppsByQuery(url.Values) ([]cfclient.V3App, error)
 	ListV3OrganizationsByQuery(url.Values) ([]cfclient.V3Organization, error)
 	ListV3SpacesByQuery(url.Values) ([]cfclient.V3Space, error)
+	ListAllProcessesByQuery(query url.Values) ([]cfclient.Process, error)
 }
 
 var globalCCCache = &CCCache{}
@@ -158,6 +160,19 @@ func (ccc *CCCache) GetOrgs() ([]*cfclient.V3Organization, error) {
 	return orgs, nil
 }
 
+// GetProcesses TODO
+func (ccc *CCCache) GetProcesses() ([]*cfclient.Process, error) {
+	ccc.RLock()
+	defer ccc.RUnlock()
+
+	var processes []*cfclient.Process
+	for _, app := range ccc.processesByGUID {
+		processes = append(processes, app)
+	}
+
+	return processes, nil
+}
+
 // GetApp looksf or an app with the given GUID in the cache
 func (ccc *CCCache) GetApp(guid string) (*cfclient.V3App, error) {
 	ccc.RLock()
@@ -188,6 +203,16 @@ func (ccc *CCCache) GetOrg(guid string) (*cfclient.V3Organization, error) {
 		return nil, fmt.Errorf("could not find org %s in cloud controller cache", guid)
 	}
 	return org, nil
+}
+
+func (ccc *CCCache) GetProcess(guid string) (*cfclient.Process, error) {
+	ccc.RLock()
+	defer ccc.RUnlock()
+	process, ok := ccc.processesByGUID[guid]
+	if !ok {
+		return nil, fmt.Errorf("could not find process %s in cloud controller cache", guid)
+	}
+	return process, nil
 }
 
 func (ccc *CCCache) start() {
@@ -262,6 +287,24 @@ func (ccc *CCCache) readData() {
 		}
 	}()
 
+	// List processes
+	wg.Add(1)
+	var processesByGUID map[string]*cfclient.Process
+	go func() {
+		defer wg.Done()
+		query := url.Values{}
+		query.Add("per_page", fmt.Sprintf("%d", ccc.appsBatchSize))
+		processes, err := ccc.ccAPIClient.ListAllProcessesByQuery(query)
+		if err != nil {
+			log.Errorf("Failed listing orgs from cloud controller: %v", err)
+			return
+		}
+		processesByGUID = make(map[string]*cfclient.Process, len(processes))
+		for _, process := range processes {
+			processesByGUID[process.GUID] = &process
+		}
+	}()
+
 	// put new data in cache
 	wg.Wait()
 	ccc.Lock()
@@ -269,6 +312,7 @@ func (ccc *CCCache) readData() {
 	ccc.appsByGUID = appsByGUID
 	ccc.spacesByGUID = spacesByGUID
 	ccc.orgsByGUID = orgsByGUID
+	ccc.processesByGUID = processesByGUID
 	firstUpdate := ccc.lastUpdated.IsZero()
 	ccc.lastUpdated = time.Now()
 	if firstUpdate {

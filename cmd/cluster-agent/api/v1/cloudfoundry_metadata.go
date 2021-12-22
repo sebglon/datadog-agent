@@ -22,6 +22,7 @@ func installCloudFoundryMetadataEndpoints(r *mux.Router) {
 	r.HandleFunc("/cf/apps/", listCFApplications).Methods("GET")
 	r.HandleFunc("/cf/spaces/", listCFSpaces).Methods("GET")
 	r.HandleFunc("/cf/orgs/", listCFOrgs).Methods("GET")
+	r.HandleFunc("/cf/processes/", listCFProcesses).Methods("GET")
 }
 
 func installKubernetesMetadataEndpoints(r *mux.Router) {}
@@ -194,6 +195,49 @@ func listCFOrgs(w http.ResponseWriter, r *http.Request) {
 		w.Write(orgsBytes)
 		apiRequests.Inc(
 			"listCFOrgs",
+			strconv.Itoa(http.StatusOK),
+		)
+		return
+	}
+}
+
+// listCFProcesses TODO
+// TODO
+func listCFProcesses(w http.ResponseWriter, r *http.Request) {
+	ccCache, err := cloudfoundry.GetGlobalCCCache()
+	if err != nil {
+		log.Errorf("Could not retrieve CC cache: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc("listCFProcesses", strconv.Itoa(http.StatusInternalServerError))
+		return
+	}
+
+	processes, err := ccCache.GetProcesses()
+	if err != nil {
+		log.Errorf("Error getting processes: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"listCFProcesses",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+
+	processesBytes, err := json.Marshal(processes)
+	if err != nil {
+		log.Errorf("Could not process CF processes: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apiRequests.Inc(
+			"listCFProcesses",
+			strconv.Itoa(http.StatusInternalServerError),
+		)
+		return
+	}
+	if len(processesBytes) > 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write(processesBytes)
+		apiRequests.Inc(
+			"listCFProcesses",
 			strconv.Itoa(http.StatusOK),
 		)
 		return

@@ -231,12 +231,12 @@ func initializeCCCache(ctx context.Context) error {
 	pollInterval := time.Second * time.Duration(config.Datadog.GetInt("cloud_foundry_cc.poll_interval"))
 	_, err := cloudfoundry.ConfigureGlobalCCCache(
 		ctx,
-		config.Datadog.GetString("cloud_foundry_cc.url"),
-		config.Datadog.GetString("cloud_foundry_cc.client_id"),
-		config.Datadog.GetString("cloud_foundry_cc.client_secret"),
-		config.Datadog.GetBool("cloud_foundry_cc.skip_ssl_validation"),
+		config.Datadog.GetString("cloud_foundry_cc.url"),               // TODO: add to config
+		config.Datadog.GetString("cloud_foundry_cc.client_id"),         // TODO: add to config
+		config.Datadog.GetString("cloud_foundry_cc.client_secret"),     // TODO: add to config
+		config.Datadog.GetBool("cloud_foundry_cc.skip_ssl_validation"), // TODO: add to config
 		pollInterval,
-		config.Datadog.GetInt("cloud_foundry_cc.apps_batch_size"),
+		config.Datadog.GetInt("cloud_foundry_cc.apps_batch_size"), // TODO: add to config
 		nil,
 	)
 	if err != nil {
