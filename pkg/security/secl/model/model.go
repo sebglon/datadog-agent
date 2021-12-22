@@ -617,9 +617,11 @@ type PTraceEvent struct {
 type MMapEvent struct {
 	SyscallEvent
 
-	Addr       uint64 `field:"addr"`
-	Len        uint32 `field:"len"`
-	Protection int    `field:"protection"`
+	File       FileEvent `field:"file"`
+	Addr       uint64    `field:"addr"`
+	Len        uint32    `field:"len"`
+	Protection int       `field:"protection"`
+	Flags      int       `field:"flags"`
 }
 
 // MProtectEvent represents a mprotect event

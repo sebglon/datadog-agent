@@ -304,10 +304,82 @@ var (
 	}
 
 	vmConstants = map[string]int{
-		"VM_READ":   1,
-		"VM_WRITE":  2,
-		"VM_EXEC":   4,
-		"VM_SHARED": 8,
+		"VM_NONE":         0x0,
+		"VM_READ":         0x1,
+		"VM_WRITE":        0x2,
+		"VM_EXEC":         0x4,
+		"VM_SHARED":       0x8,
+		"VM_MAYREAD":      0x00000010,
+		"VM_MAYWRITE":     0x00000020,
+		"VM_MAYEXEC":      0x00000040,
+		"VM_MAYSHARE":     0x00000080,
+		"VM_GROWSDOWN":    0x00000100, /* general info on the segment */
+		"VM_UFFD_MISSING": 0x00000200, /* missing pages tracking */
+		"VM_PFNMAP":       0x00000400, /* Page-ranges managed without "struct page", just pure PFN */
+		"VM_UFFD_WP":      0x00001000, /* wrprotect pages tracking */
+		"VM_LOCKED":       0x00002000,
+		"VM_IO":           0x00004000, /* Memory mapped I/O or similar */
+		"VM_SEQ_READ":     0x00008000, /* App will access data sequentially */
+		"VM_RAND_READ":    0x00010000, /* App will not benefit from clustered reads */
+		"VM_DONTCOPY":     0x00020000, /* Do not copy this vma on fork */
+		"VM_DONTEXPAND":   0x00040000, /* Cannot expand with mremap() */
+		"VM_LOCKONFAULT":  0x00080000, /* Lock the pages covered when they are faulted in */
+		"VM_ACCOUNT":      0x00100000, /* Is a VM accounted object */
+		"VM_NORESERVE":    0x00200000, /* should the VM suppress accounting */
+		"VM_HUGETLB":      0x00400000, /* Huge TLB Page VM */
+		"VM_SYNC":         0x00800000, /* Synchronous page faults */
+		"VM_ARCH_1":       0x01000000, /* Architecture-specific flag */
+		"VM_WIPEONFORK":   0x02000000, /* Wipe VMA contents in child. */
+		"VM_DONTDUMP":     0x04000000, /* Do not include in the core dump */
+		"VM_SOFTDIRTY":    0x08000000, /* Not soft dirty clean area */
+		"VM_MIXEDMAP":     0x10000000, /* Can contain "struct page" and pure PFN pages */
+		"VM_HUGEPAGE":     0x20000000, /* MADV_HUGEPAGE marked this vma */
+		"VM_NOHUGEPAGE":   0x40000000, /* MADV_NOHUGEPAGE marked this vma */
+		"VM_MERGEABLE":    0x80000000, /* KSM may merge identical pages */
+	}
+
+	protConstants = map[string]int{
+		"PROT_NONE":      unix.PROT_NONE,
+		"PROT_READ":      unix.PROT_READ,
+		"PROT_WRITE":     unix.PROT_WRITE,
+		"PROT_EXEC":      unix.PROT_EXEC,
+		"PROT_GROWSDOWN": unix.PROT_GROWSDOWN,
+		"PROT_GROWSUP":   unix.PROT_GROWSUP,
+	}
+
+	mmapFlagConstants = map[string]int{
+		"MAP_SHARED":          unix.MAP_SHARED,          /* Share changes */
+		"MAP_PRIVATE":         unix.MAP_PRIVATE,         /* Changes are private */
+		"MAP_SHARED_VALIDATE": unix.MAP_SHARED_VALIDATE, /* share + validate extension flags */
+		"MAP_32BIT":           unix.MAP_32BIT,           /* only give out 32bit addresses */
+		"MAP_ANON":            unix.MAP_ANON,
+		"MAP_ANONYMOUS":       unix.MAP_ANONYMOUS,       /* don't use a file */
+		"MAP_DENYWRITE":       unix.MAP_DENYWRITE,       /* ETXTBSY */
+		"MAP_EXECUTABLE":      unix.MAP_EXECUTABLE,      /* mark it as an executable */
+		"MAP_FIXED":           unix.MAP_FIXED,           /* Interpret addr exactly */
+		"MAP_FIXED_NOREPLACE": unix.MAP_FIXED_NOREPLACE, /* MAP_FIXED which doesn't unmap underlying mapping */
+		"MAP_GROWSDOWN":       unix.MAP_GROWSDOWN,       /* stack-like segment */
+		"MAP_HUGETLB":         unix.MAP_HUGETLB,         /* create a huge page mapping */
+		"MAP_LOCKED":          unix.MAP_LOCKED,          /* pages are locked */
+		"MAP_NONBLOCK":        unix.MAP_NONBLOCK,        /* do not block on IO */
+		"MAP_NORESERVE":       unix.MAP_NORESERVE,       /* don't check for reservations */
+		"MAP_POPULATE":        unix.MAP_POPULATE,        /* populate (prefault) pagetables */
+		"MAP_STACK":           unix.MAP_STACK,           /* give out an address that is best suited for process/thread stacks */
+		"MAP_SYNC":            unix.MAP_SYNC,            /* perform synchronous page faults for the mapping */
+		"MAP_UNINITIALIZED":   0x4000000,                /* For anonymous mmap, memory could be uninitialized */
+		"MAP_HUGE_16KB":       14 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_64KB":       16 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_512KB":      19 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_1MB":        20 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_2MB":        21 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_8MB":        23 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_16MB":       24 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_32MB":       25 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_256MB":      28 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_512MB":      29 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_1GB":        30 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_2GB":        31 << unix.MAP_HUGE_SHIFT,
+		"MAP_HUGE_16GB":       34 << unix.MAP_HUGE_SHIFT,
 	}
 
 	// BPFCmdConstants is the list of BPF commands
@@ -656,7 +728,9 @@ var (
 	bpfProgramTypeStrings     = map[uint32]string{}
 	bpfAttachTypeStrings      = map[uint32]string{}
 	ptraceFlagsStrings        = map[uint32]string{}
-	vmFlagsStrings            = map[int]string{}
+	vmStrings                 = map[int]string{}
+	protStrings               = map[int]string{}
+	mmapFlagStrings           = map[int]string{}
 )
 
 // File flags
@@ -759,7 +833,27 @@ func initVMConstants() {
 	}
 
 	for k, v := range vmConstants {
-		vmFlagsStrings[v] = k
+		vmStrings[v] = k
+	}
+}
+
+func initProtConstansts() {
+	for k, v := range protConstants {
+		SECLConstants[k] = &eval.IntEvaluator{Value: v}
+	}
+
+	for k, v := range protConstants {
+		protStrings[v] = k
+	}
+}
+
+func initMMapFlagsConstants() {
+	for k, v := range mmapFlagConstants {
+		SECLConstants[k] = &eval.IntEvaluator{Value: v}
+	}
+
+	for k, v := range mmapFlagConstants {
+		mmapFlagStrings[v] = k
 	}
 }
 
@@ -776,6 +870,8 @@ func initConstants() {
 	initBPFAttachTypeConstants()
 	initPtraceConstants()
 	initVMConstants()
+	initProtConstansts()
+	initMMapFlagsConstants()
 }
 
 func bitmaskToStringArray(bitmask int, intToStrMap map[int]string) []string {
@@ -1571,9 +1667,23 @@ func (f PTraceRequest) String() string {
 	return fmt.Sprintf("%d", f)
 }
 
-// VMProtection represents a virtual memory protection bitmask value
-type VMProtection int
+// VMFlag represents a VM_* bitmask value
+type VMFlag int
 
-func (vmp VMProtection) String() string {
-	return bitmaskToString(int(vmp), vmFlagsStrings)
+func (vmf VMFlag) String() string {
+	return bitmaskToString(int(vmf), vmStrings)
+}
+
+// Protection represents a virtual memory protection bitmask value
+type Protection int
+
+func (p Protection) String() string {
+	return bitmaskToString(int(p), protStrings)
+}
+
+// MMapFlag represents a mmap flag value
+type MMapFlag int
+
+func (mmf MMapFlag) String() string {
+	return bitmaskToString(int(mmf), mmapFlagStrings)
 }
