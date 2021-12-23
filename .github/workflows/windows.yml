@@ -8,6 +8,8 @@ jobs:
     steps:
       - name: Checkout datadog-agent repository
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 #needed for 'git describe' to work
 
       - name: Install python
         uses: actions/setup-python@v2
