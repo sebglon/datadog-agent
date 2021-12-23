@@ -133,4 +133,6 @@ func init() {
 	allCapabilities["rmdir"] = oneBasenameCapabilities("rmdir")
 	allCapabilities["unlink"] = oneBasenameCapabilities("unlink")
 	allCapabilities["utimes"] = oneBasenameCapabilities("utimes")
+	allCapabilities["mmap"] = mmapCapabilities
+	allCapabilities["mprotect"] = mprotectCapabilities
 }
