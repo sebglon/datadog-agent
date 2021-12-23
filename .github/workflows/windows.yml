@@ -19,20 +19,6 @@ jobs:
         with:
           go-version: '1.16.7'
 
-      # Get values for cache paths to be used in later steps
-      - name: Get go mod path
-        id: go-cache-paths
-        run: |
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
-
-      - name: Go mod cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
       - name: Set up runner
         run: |
           $ErrorActionPreference = 'Stop';
