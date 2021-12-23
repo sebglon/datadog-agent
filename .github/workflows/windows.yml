@@ -34,10 +34,6 @@ jobs:
       - name: Run tests
         run: |
           $ErrorActionPreference = 'Stop';
-          $Env:Python3_ROOT_DIR=$Env:pythonLocation
-          $Env:PATH += ";$Env:pythonLocation"
-          $Env:PATH += ";$Env:pythonLocation\\Scripts"
-          $Env:PATH += "D:\\a\\datadog-agent\\datadog-agent\\dev\\lib"
           inv -e rtloader.make
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
           inv -e rtloader.format --raise-if-changed
