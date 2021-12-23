@@ -44,7 +44,7 @@ jobs:
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
           inv -e rtloader.install
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
-          inv -e rtloader.test
+          #inv -e rtloader.test
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
           inv -e test --rerun-fails=2 --python-runtimes 3 --coverage --profile --fail-on-fmt --python-home-3=$Env:pythonLocation
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
