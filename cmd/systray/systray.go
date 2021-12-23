@@ -7,6 +7,8 @@
 package main
 
 //#include <windows.h>
+//#include <winbase.h>
+//#include <processthreadsapi.h>
 //
 //BOOL LaunchUnelevated(LPCWSTR CommandLine)
 //{
