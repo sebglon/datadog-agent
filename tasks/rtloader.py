@@ -4,6 +4,7 @@ RtLoader namespaced tasks
 import errno
 import os
 import shutil
+import sys
 
 from invoke import task
 from invoke.exceptions import Exit
@@ -57,7 +58,10 @@ def make(ctx, install_prefix=None, python_runtimes='3', cmake_options='', arch="
     dev_path = get_dev_path()
 
     if cmake_options.find("-G") == -1:
-        cmake_options += " -G \"Unix Makefiles\""
+        if sys.platform == "win32":
+            cmake_options += " -G \"MSYS Makefiles\""
+        else:
+            cmake_options += " -G \"Unix Makefiles\""
 
     cmake_args = cmake_options + f" -DBUILD_DEMO:BOOL=OFF -DCMAKE_INSTALL_PREFIX:PATH={install_prefix or dev_path}"
 

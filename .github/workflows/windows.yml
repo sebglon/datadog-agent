@@ -34,7 +34,7 @@ jobs:
       - name: Run tests
         run: |
           $ErrorActionPreference = 'Stop';
-          inv -e rtloader.make --cmake-options='-G "MSYS Makefiles"'
+          inv -e rtloader.make
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
           inv -e rtloader.format --raise-if-changed
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
