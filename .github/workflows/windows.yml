@@ -34,6 +34,7 @@ jobs:
       - name: Run tests
         run: |
           $ErrorActionPreference = 'Stop';
+          $Env:Python3_ROOT_DIR=$Env:pythonLocation
           inv -e rtloader.make
           If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
           inv -e rtloader.format --raise-if-changed
