@@ -1,0 +1,62 @@
+name: "Windows unit tests"
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout datadog-agent repository
+        uses: actions/checkout@v2
+
+      - name: Install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8.10'
+
+      - name: Install go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16.7'
+
+      # Get values for cache paths to be used in later steps
+      - name: Get go mod path
+        id: go-cache-paths
+        run: |
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+
+      - name: Go mod cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Set up runner
+        run: |
+          $ErrorActionPreference = 'Stop';
+          # install dependencies
+          python -m pip install codecov -r requirements.txt
+          inv -e install-tools
+          inv -e deps
+
+          # create 'ddagentuser' user to test the secrets feature on windows
+          $Password = ConvertTo-SecureString "dummyPW_:-gch6Rejae9" -AsPlainText -Force;
+          New-LocalUser -Name "ddagentuser" -Description "Test user for the secrets feature on windows." -Password $Password
+
+      - name: Run tests
+        run: |
+          $ErrorActionPreference = 'Stop';
+          inv -e rtloader.format --raise-if-changed
+          If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
+          inv -e rtloader.make --cmake-options='-G "MSYS Makefiles"'
+          If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
+          inv -e rtloader.install
+          If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
+          inv -e rtloader.test
+          If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
+          inv -e test --rerun-fails=2 --python-runtimes 3 --coverage --profile --fail-on-fmt --python-home-3=$Env:pythonLocation
+          If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
+          codecov -f profile.cov -F windows
+          If ($lastExitCode -ne "0") { throw "Previous command returned $lastExitCode" }
