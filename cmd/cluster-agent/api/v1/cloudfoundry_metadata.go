@@ -9,6 +9,7 @@ package v1
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -19,10 +20,10 @@ import (
 
 func installCloudFoundryMetadataEndpoints(r *mux.Router) {
 	r.HandleFunc("/tags/cf/apps/{nodeName}", getCFAppsMetadataForNode).Methods("GET")
-	r.HandleFunc("/cf/apps/", listCFApplications).Methods("GET")
-	r.HandleFunc("/cf/spaces/", listCFSpaces).Methods("GET")
-	r.HandleFunc("/cf/orgs/", listCFOrgs).Methods("GET")
-	r.HandleFunc("/cf/processes/", listCFProcesses).Methods("GET")
+	r.HandleFunc("/cf/apps", listCFApplications).Methods("GET")
+	r.HandleFunc("/cf/spaces", listCFSpaces).Methods("GET")
+	r.HandleFunc("/cf/orgs", listCFOrgs).Methods("GET")
+	r.HandleFunc("/cf/processes", listCFProcesses).Methods("GET")
 }
 
 func installKubernetesMetadataEndpoints(r *mux.Router) {}
@@ -105,6 +106,7 @@ func listCFApplications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(appsBytes) > 0 {
+		fmt.Printf("Sending CF Applications\n")
 		w.WriteHeader(http.StatusOK)
 		w.Write(appsBytes)
 		apiRequests.Inc(
