@@ -16,6 +16,11 @@ jobs:
         with:
           python-version: '3.8.10'
 
+      - name: Install ruby # This also installs the msys compiler we need for cgo
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: mswin
+
       - name: Install go
         uses: actions/setup-go@v2
         with:
