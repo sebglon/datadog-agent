@@ -217,12 +217,15 @@ func (r *RemoteRates) GetSignatureSampleRate(sig Signature) (float64, bool) {
 }
 
 // GetAllSignatureSampleRates returns sampling rates to apply for all registered signatures.
-func (r *RemoteRates) GetAllSignatureSampleRates() map[Signature]float64 {
+func (r *RemoteRates) GetAllSignatureSampleRates() map[Signature]rm {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	res := make(map[Signature]float64, len(r.samplers))
+	res := make(map[Signature]rm, len(r.samplers))
 	for sig, s := range r.samplers {
-		res[sig] = s.GetSignatureSampleRate(sig)
+		res[sig] = rm{
+			r: s.GetSignatureSampleRate(sig),
+			m: s.target.Mechanism,
+		}
 	}
 	return res
 }

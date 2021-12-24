@@ -218,8 +218,8 @@ func (s *PrioritySampler) applyRate(sampled bool, root *pb.Span, signature Signa
 
 // ratesByService returns all rates by service, this information is useful for
 // agents to pick the right service rate.
-func (s *PrioritySampler) ratesByService() map[ServiceSignature]float64 {
-	var remoteRates map[Signature]float64
+func (s *PrioritySampler) ratesByService() map[ServiceSignature]rm {
+	var remoteRates map[Signature]rm
 	if s.remoteRates != nil {
 		remoteRates = s.remoteRates.GetAllSignatureSampleRates()
 	}

@@ -34,6 +34,12 @@ type catalogEntry struct {
 	sig Signature
 }
 
+// rm TODO
+type rm struct {
+	r float64
+	m uint32
+}
+
 // newServiceLookup returns a new serviceKeyCatalog.
 func newServiceLookup() *serviceKeyCatalog {
 	entries := maxCatalogEntries
@@ -70,22 +76,27 @@ func (cat *serviceKeyCatalog) register(svcSig ServiceSignature) Signature {
 
 // ratesByService returns a map of service signatures mapping to the rates identified using
 // the signatures.
-func (cat *serviceKeyCatalog) ratesByService(localRates, remoteRates map[Signature]float64, defaultRate float64) map[ServiceSignature]float64 {
-	rbs := make(map[ServiceSignature]float64, len(localRates)+1)
+func (cat *serviceKeyCatalog) ratesByService(localRates map[Signature]float64, remoteRates map[Signature]rm, defaultRate float64) map[ServiceSignature]rm {
+	rbs := make(map[ServiceSignature]rm, len(localRates)+1)
 	cat.mu.Lock()
 	defer cat.mu.Unlock()
 	for key, el := range cat.items {
 		sig := el.Value.(catalogEntry).sig
-		// todo:raphael distinguish remote rates from local rates with a separate priority value
-		if rate, ok := remoteRates[sig]; ok {
-			rbs[key] = rate
+		if r, ok := remoteRates[sig]; ok {
+			rbs[key] = r
 		} else if rate, ok := localRates[sig]; ok {
-			rbs[key] = rate
+			rbs[key] = rm{
+				r: rate,
+				m: 1,
+			}
 		} else {
 			cat.ll.Remove(el)
 			delete(cat.items, key)
 		}
 	}
-	rbs[ServiceSignature{}] = defaultRate
+	rbs[ServiceSignature{}] = rm{
+		r: defaultRate,
+		m: 1,
+	}
 	return rbs
 }

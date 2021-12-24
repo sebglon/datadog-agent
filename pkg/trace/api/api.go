@@ -371,6 +371,9 @@ const (
 	// This value is used for metrics and could be used in the future to adjust priority rates.
 	headerDroppedP0Spans = "Datadog-Client-Dropped-P0-Spans"
 
+	// headerRatesPayloadVersion TODO
+	headerRatesPayloadVersion = "Datadog-Rates-Payload-Version"
+
 	// tagContainersTags specifies the name of the tag which holds key/value
 	// pairs representing information about the container (Docker, EC2, etc).
 	tagContainersTags = "_dd.tags.container"
@@ -447,12 +450,16 @@ func decodeTracerPayload(v Version, req *http.Request, ts *info.TagStats) (tp *p
 // replyOK replies to the given http.ReponseWriter w based on the endpoint version, with either status 200/OK
 // or with a list of rates by service. It returns the number of bytes written along with reporting if the operation
 // was successful.
-func (r *HTTPReceiver) replyOK(v Version, w http.ResponseWriter) (n uint64, ok bool) {
+func (r *HTTPReceiver) replyOK(req *http.Request, v Version, w http.ResponseWriter) (n uint64, ok bool) {
 	switch v {
 	case v01, v02, v03:
 		return httpOK(w)
 	default:
-		return httpRateByService(w, r.dynConf)
+		rateVersion, err := strconv.ParseUint(req.Header.Get(headerRatesPayloadVersion), 10, 64)
+		if err != nil {
+			rateVersion = 0
+		}
+		return httpRateByService(rateVersion, w, r.dynConf)
 	}
 }
 
@@ -548,7 +555,7 @@ func (r *HTTPReceiver) handleTraces(v Version, w http.ResponseWriter, req *http.
 		// this payload can not be accepted
 		io.Copy(ioutil.Discard, req.Body)
 		w.WriteHeader(r.rateLimiterResponse)
-		r.replyOK(v, w)
+		r.replyOK(req, v, w)
 		atomic.AddInt64(&ts.PayloadRefused, 1)
 		return
 	}
@@ -586,7 +593,7 @@ func (r *HTTPReceiver) handleTraces(v Version, w http.ResponseWriter, req *http.
 			runMetaHook(tp.Chunks)
 		}
 	}
-	if n, ok := r.replyOK(v, w); ok {
+	if n, ok := r.replyOK(req, v, w); ok {
 		tags := append(ts.AsTags(), "endpoint:traces_"+string(v))
 		metrics.Histogram("datadog.trace_agent.receiver.rate_response_bytes", float64(n), tags, 1)
 	}

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/DataDog/datadog-agent/pkg/trace/api/apiutil"
@@ -27,7 +28,8 @@ const (
 // should we add another fied.
 type traceResponse struct {
 	// All the sampling rates recommended, by service
-	Rates map[string]float64 `json:"rate_by_service"`
+	Rates      map[string]float64 `json:"rate_by_service"`
+	Mechanisms map[string]uint32  `json:"mechanism,omitempty"`
 }
 
 // httpFormatError is used for payload format errors
@@ -90,10 +92,13 @@ func (wc *writeCounter) N() uint64 { return atomic.LoadUint64(&wc.n) }
 // httpRateByService outputs, as a JSON, the recommended sampling rates for all services.
 // It returns the number of bytes written and a boolean specifying whether the write was
 // successful.
-func httpRateByService(w http.ResponseWriter, dynConf *sampler.DynamicConfig) (n uint64, ok bool) {
+func httpRateByService(version uint64, w http.ResponseWriter, dynConf *sampler.DynamicConfig) (n uint64, ok bool) {
 	w.Header().Set("Content-Type", "application/json")
+	currentState := dynConf.RateByService.GetNewState(version) // this is thread-safe
+	w.Header().Set(headerRatesPayloadVersion, strconv.FormatUint(currentState.Version, 10))
 	response := traceResponse{
-		Rates: dynConf.RateByService.GetAll(), // this is thread-safe
+		Rates:      currentState.Rates,
+		Mechanisms: currentState.Mechanisms,
 	}
 	wc := newWriteCounter(w)
 	ok = true
