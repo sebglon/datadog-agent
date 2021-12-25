@@ -106,7 +106,6 @@ func listCFApplications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(appsBytes) > 0 {
-		fmt.Printf("Sending CF Applications\n")
 		w.WriteHeader(http.StatusOK)
 		w.Write(appsBytes)
 		apiRequests.Inc(
