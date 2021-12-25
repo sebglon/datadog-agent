@@ -30,8 +30,29 @@ type CCCacheI interface {
 	// will never close.
 	UpdatedOnce() <-chan struct{}
 
-	// GetApp looksf or an app with the given GUID in the cache
+	// GetApp looks for an app with the given GUID in the cache
 	GetApp(string) (*cfclient.V3App, error)
+
+	// GetSpace looks for a space with the given GUID in the cache
+	GetSpace(guid string) (*cfclient.V3Space, error)
+
+	// GetOrg looks for an org with the given GUID in the cache
+	GetOrg(guid string) (*cfclient.V3Organization, error)
+
+	// GetProcess looks for a process with the given GUID in the cache
+	GetProcess(guid string) (*cfclient.Process, error)
+
+	// GetApps returns all apps in the cache
+	GetApps() ([]*cfclient.V3App, error)
+
+	// GetSpaces returns all spaces in the cache
+	GetSpaces() ([]*cfclient.V3Space, error)
+
+	// GetOrgs returns all orgs in the cache
+	GetOrgs() ([]*cfclient.V3Organization, error)
+
+	// GetProcesses returns all processes in the cache
+	GetProcesses() ([]*cfclient.Process, error)
 }
 
 // CCCache is a simple structure that caches and automatically refreshes data from Cloud Foundry API
@@ -121,7 +142,7 @@ func (ccc *CCCache) UpdatedOnce() <-chan struct{} {
 	return ccc.updatedOnce
 }
 
-// GetApp looksf or an app with the given GUID in the cache
+// GetApps returns all apps in the cache
 func (ccc *CCCache) GetApps() ([]*cfclient.V3App, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
@@ -134,46 +155,46 @@ func (ccc *CCCache) GetApps() ([]*cfclient.V3App, error) {
 	return apps, nil
 }
 
-// GetSpaces TODO
+// GetSpaces returns all spaces in the cache
 func (ccc *CCCache) GetSpaces() ([]*cfclient.V3Space, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 
 	var spaces []*cfclient.V3Space
-	for _, app := range ccc.spacesByGUID {
-		spaces = append(spaces, app)
+	for _, space := range ccc.spacesByGUID {
+		spaces = append(spaces, space)
 	}
 
 	return spaces, nil
 }
 
-// GetOrgs TODO
+// GetOrgs returns all orgs in the cache
 func (ccc *CCCache) GetOrgs() ([]*cfclient.V3Organization, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 
 	var orgs []*cfclient.V3Organization
-	for _, app := range ccc.orgsByGUID {
-		orgs = append(orgs, app)
+	for _, org := range ccc.orgsByGUID {
+		orgs = append(orgs, org)
 	}
 
 	return orgs, nil
 }
 
-// GetProcesses TODO
+// GetProcesses returns all processes in the cache
 func (ccc *CCCache) GetProcesses() ([]*cfclient.Process, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
 
 	var processes []*cfclient.Process
-	for _, app := range ccc.processesByGUID {
-		processes = append(processes, app)
+	for _, process := range ccc.processesByGUID {
+		processes = append(processes, process)
 	}
 
 	return processes, nil
 }
 
-// GetApp looksf or an app with the given GUID in the cache
+// GetApp looks for an app with the given GUID in the cache
 func (ccc *CCCache) GetApp(guid string) (*cfclient.V3App, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
@@ -185,6 +206,7 @@ func (ccc *CCCache) GetApp(guid string) (*cfclient.V3App, error) {
 	return app, nil
 }
 
+// GetSpace looks for a space with the given GUID in the cache
 func (ccc *CCCache) GetSpace(guid string) (*cfclient.V3Space, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
@@ -195,6 +217,7 @@ func (ccc *CCCache) GetSpace(guid string) (*cfclient.V3Space, error) {
 	return space, nil
 }
 
+// GetOrg looks for an org with the given GUID in the cache
 func (ccc *CCCache) GetOrg(guid string) (*cfclient.V3Organization, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
@@ -205,6 +228,7 @@ func (ccc *CCCache) GetOrg(guid string) (*cfclient.V3Organization, error) {
 	return org, nil
 }
 
+// GetProcess looks for a process with the given GUID in the cache
 func (ccc *CCCache) GetProcess(guid string) (*cfclient.Process, error) {
 	ccc.RLock()
 	defer ccc.RUnlock()
@@ -247,7 +271,8 @@ func (ccc *CCCache) readData() {
 		}
 		appsByGUID = make(map[string]*cfclient.V3App, len(apps))
 		for _, app := range apps {
-			appsByGUID[app.GUID] = &app
+			v3App := app
+			appsByGUID[app.GUID] = &v3App
 		}
 	}()
 
@@ -265,8 +290,10 @@ func (ccc *CCCache) readData() {
 		}
 		spacesByGUID = make(map[string]*cfclient.V3Space, len(spaces))
 		for _, space := range spaces {
-			spacesByGUID[space.GUID] = &space
+			v3Space := space
+			spacesByGUID[space.GUID] = &v3Space
 		}
+
 	}()
 
 	// List orgs
@@ -283,7 +310,8 @@ func (ccc *CCCache) readData() {
 		}
 		orgsByGUID = make(map[string]*cfclient.V3Organization, len(orgs))
 		for _, org := range orgs {
-			orgsByGUID[org.GUID] = &org
+			v3Org := org
+			orgsByGUID[org.GUID] = &v3Org
 		}
 	}()
 
@@ -301,7 +329,8 @@ func (ccc *CCCache) readData() {
 		}
 		processesByGUID = make(map[string]*cfclient.Process, len(processes))
 		for _, process := range processes {
-			processesByGUID[process.GUID] = &process
+			proc := process
+			processesByGUID[process.GUID] = &proc
 		}
 	}()
 

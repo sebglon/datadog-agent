@@ -289,6 +289,7 @@ func DesiredLRPFromBBSModel(bbsLRP *models.DesiredLRP, includeList, excludeList 
 			log.Debugf("Could not find app %s in cc cache", appGUID)
 		} else {
 			appName = ccApp.Name
+			// TODO: custom tags?
 			// customTags = append(customTags, ccApp.Tags...)
 
 			spaceGUID = ccApp.Relationships["space"].Data.GUID

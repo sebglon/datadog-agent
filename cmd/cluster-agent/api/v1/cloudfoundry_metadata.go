@@ -73,8 +73,8 @@ func getCFAppsMetadataForNode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// listCFApplications TODO
-// TODO
+// listCFApplications is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry applications
+// It return a list of V3 cloudfoundry applications
 func listCFApplications(w http.ResponseWriter, r *http.Request) {
 	ccCache, err := cloudfoundry.GetGlobalCCCache()
 	if err != nil {
@@ -117,8 +117,8 @@ func listCFApplications(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// listCFSpaces TODO
-// TODO
+// listCFSpaces is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry spaces
+// It return a list of V3 cloudfoundry spaces
 func listCFSpaces(w http.ResponseWriter, r *http.Request) {
 	ccCache, err := cloudfoundry.GetGlobalCCCache()
 	if err != nil {
@@ -160,8 +160,8 @@ func listCFSpaces(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// listCFOrgs TODO
-// TODO
+// listCFOrgs is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry orgs
+// It return a list of V3 cloudfoundry orgs
 func listCFOrgs(w http.ResponseWriter, r *http.Request) {
 	ccCache, err := cloudfoundry.GetGlobalCCCache()
 	if err != nil {
@@ -203,8 +203,8 @@ func listCFOrgs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// listCFProcesses TODO
-// TODO
+// listCFProcesses is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry processes
+// It return a list of cloudfoundry processes
 func listCFProcesses(w http.ResponseWriter, r *http.Request) {
 	ccCache, err := cloudfoundry.GetGlobalCCCache()
 	if err != nil {
