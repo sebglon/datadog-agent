@@ -1424,16 +1424,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 			Weight: eval.FunctionWeight,
 		}, nil
 
-	case "mmap.addr":
-		return &eval.IntEvaluator{
-			EvalFnc: func(ctx *eval.Context) int {
-
-				return int((*Event)(ctx.Object).MMap.Addr)
-			},
-			Field:  field,
-			Weight: eval.FunctionWeight,
-		}, nil
-
 	case "mmap.file.change_time":
 		return &eval.IntEvaluator{
 			EvalFnc: func(ctx *eval.Context) int {
@@ -1579,16 +1569,6 @@ func (m *Model) GetEvaluator(field eval.Field, regID eval.RegisterID) (eval.Eval
 			EvalFnc: func(ctx *eval.Context) int {
 
 				return (*Event)(ctx.Object).MMap.Flags
-			},
-			Field:  field,
-			Weight: eval.FunctionWeight,
-		}, nil
-
-	case "mmap.len":
-		return &eval.IntEvaluator{
-			EvalFnc: func(ctx *eval.Context) int {
-
-				return int((*Event)(ctx.Object).MMap.Len)
 			},
 			Field:  field,
 			Weight: eval.FunctionWeight,
@@ -6302,8 +6282,6 @@ func (e *Event) GetFields() []eval.Field {
 
 		"mkdir.retval",
 
-		"mmap.addr",
-
 		"mmap.file.change_time",
 
 		"mmap.file.filesystem",
@@ -6333,8 +6311,6 @@ func (e *Event) GetFields() []eval.Field {
 		"mmap.file.user",
 
 		"mmap.flags",
-
-		"mmap.len",
 
 		"mmap.protection",
 
@@ -7461,10 +7437,6 @@ func (e *Event) GetFieldValue(field eval.Field) (interface{}, error) {
 
 		return int(e.Mkdir.SyscallEvent.Retval), nil
 
-	case "mmap.addr":
-
-		return int(e.MMap.Addr), nil
-
 	case "mmap.file.change_time":
 
 		return int(e.MMap.File.FileFields.CTime), nil
@@ -7524,10 +7496,6 @@ func (e *Event) GetFieldValue(field eval.Field) (interface{}, error) {
 	case "mmap.flags":
 
 		return e.MMap.Flags, nil
-
-	case "mmap.len":
-
-		return int(e.MMap.Len), nil
 
 	case "mmap.protection":
 
@@ -10403,9 +10371,6 @@ func (e *Event) GetFieldEventType(field eval.Field) (eval.EventType, error) {
 	case "mkdir.retval":
 		return "mkdir", nil
 
-	case "mmap.addr":
-		return "mmap", nil
-
 	case "mmap.file.change_time":
 		return "mmap", nil
 
@@ -10449,9 +10414,6 @@ func (e *Event) GetFieldEventType(field eval.Field) (eval.EventType, error) {
 		return "mmap", nil
 
 	case "mmap.flags":
-		return "mmap", nil
-
-	case "mmap.len":
 		return "mmap", nil
 
 	case "mmap.protection":
@@ -11874,10 +11836,6 @@ func (e *Event) GetFieldType(field eval.Field) (reflect.Kind, error) {
 
 		return reflect.Int, nil
 
-	case "mmap.addr":
-
-		return reflect.Int, nil
-
 	case "mmap.file.change_time":
 
 		return reflect.Int, nil
@@ -11935,10 +11893,6 @@ func (e *Event) GetFieldType(field eval.Field) (reflect.Kind, error) {
 		return reflect.String, nil
 
 	case "mmap.flags":
-
-		return reflect.Int, nil
-
-	case "mmap.len":
 
 		return reflect.Int, nil
 
@@ -14568,17 +14522,6 @@ func (e *Event) SetFieldValue(field eval.Field, value interface{}) error {
 
 		return nil
 
-	case "mmap.addr":
-
-		var ok bool
-		v, ok := value.(int)
-		if !ok {
-			return &eval.ErrValueTypeMismatch{Field: "MMap.Addr"}
-		}
-		e.MMap.Addr = uint64(v)
-
-		return nil
-
 	case "mmap.file.change_time":
 
 		var ok bool
@@ -14738,17 +14681,6 @@ func (e *Event) SetFieldValue(field eval.Field, value interface{}) error {
 			return &eval.ErrValueTypeMismatch{Field: "MMap.Flags"}
 		}
 		e.MMap.Flags = int(v)
-
-		return nil
-
-	case "mmap.len":
-
-		var ok bool
-		v, ok := value.(int)
-		if !ok {
-			return &eval.ErrValueTypeMismatch{Field: "MMap.Len"}
-		}
-		e.MMap.Len = uint32(v)
 
 		return nil
 
