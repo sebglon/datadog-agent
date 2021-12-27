@@ -184,6 +184,13 @@ func TestIsParentDiscarder(t *testing.T) {
 		t.Error("should be a parent discarder")
 	}
 
+	rs = rules.NewRuleSet(&Model{}, func() eval.Event { return &Event{} }, &opts)
+	addRuleExpr(t, rs, `open.file.path =~ "/"`)
+
+	if is, _ := id.isParentPathDiscarder(rs, model.FileOpenEventType, "open.file.path", "/tmp", 1); is {
+		t.Error("shouldn't be a parent discarder")
+	}
+
 	// FIX(safchain), because of glob, */ can contain /tmp/dir except if we introduce **/ and keep */ as a one level wildcard
 	//rs = rules.NewRuleSet(&Model{}, func() eval.Event { return &Event{} }, &opts)
 	//addRuleExpr(t, rs, `open.file.path =~ "*/conf.d/aaa"`)

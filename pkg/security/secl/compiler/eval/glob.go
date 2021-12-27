@@ -12,7 +12,7 @@ type Glob struct {
 	elsPattern []string
 }
 
-func (g *Glob) contains(filename string, exact bool) bool {
+func (g *Glob) contains(filename string, strict bool) bool {
 	if len(g.elsPattern) == 0 || len(filename) == 0 {
 		return false
 	}
@@ -30,7 +30,7 @@ func (g *Glob) contains(filename string, exact bool) bool {
 	for i, elf := range elsFilename {
 		if i+1 > valueLen {
 			// FIX(safchain) should be only **
-			return !exact || elp == "*" || elp == "**"
+			return !strict || elp == "*" || elp == "**"
 			//return !exact || elp == "**"
 		}
 
