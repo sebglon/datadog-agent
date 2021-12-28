@@ -94,7 +94,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.42.20
 	github.com/beevik/ntp v0.3.0
-	github.com/benbjohnson/clock v1.1.0
+	github.com/benbjohnson/clock v1.3.0
 	github.com/benesch/cgosymbolizer v0.0.0-20190515212042-bec6fe6e597b
 	github.com/bhmj/jsonslice v0.0.0-20200323023432-92c3edaad8e2
 	github.com/blabber/go-freebsd-sysctl v0.0.0-20201130114544-503969f39d8f
@@ -118,7 +118,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/florianl/go-conntrack v0.2.0
 	github.com/freddierice/go-losetup v0.0.0-20170407175016-fc9adea44124
-	github.com/go-ini/ini v1.63.2
+	github.com/go-ini/ini v1.66.2
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-openapi/spec v0.20.4
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
