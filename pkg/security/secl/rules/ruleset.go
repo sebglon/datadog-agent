@@ -126,7 +126,7 @@ type Scope string
 type SetDefinition struct {
 	Name  string      `yaml:"name"`
 	Value interface{} `yaml:"value"`
-	Scope Scope
+	Scope Scope       `yaml:"scope"`
 }
 
 // Rule describes a rule of a ruleset
