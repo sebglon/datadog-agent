@@ -90,6 +90,8 @@ func TTYConstants(probe *Probe) []manager.ConstantEditor {
 		ttyOffset, nameOffset = 376, 368
 	case probe.kernelVersion.IsSLES15Kernel():
 		ttyOffset, nameOffset = 408, 368
+	case probe.kernelVersion.IsCOSKernel():
+		ttyOffset, nameOffset = 416, 552
 	case probe.kernelVersion.Code != 0 && probe.kernelVersion.Code < kernel.Kernel5_3:
 		ttyOffset, nameOffset = 368, 368
 	}
