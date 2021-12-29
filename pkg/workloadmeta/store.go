@@ -396,29 +396,29 @@ func (s *store) handleEvents(evs []CollectorEvent) {
 			entitiesOfKind = s.store[meta.Kind]
 		}
 
-		entityOfSource, ok := entitiesOfKind[meta.ID]
+		entitiesBySource, ok := entitiesOfKind[meta.ID]
 
 		switch ev.Type {
 		case EventTypeSet:
 			if !ok {
 				entitiesOfKind[meta.ID] = make(sourceToEntity)
-				entityOfSource = entitiesOfKind[meta.ID]
+				entitiesBySource = entitiesOfKind[meta.ID]
 			}
 
-			if _, found := entityOfSource[ev.Source]; !found {
+			if _, found := entitiesBySource[ev.Source]; !found {
 				telemetry.StoredEntities.Inc(string(meta.Kind), string(ev.Source))
 			}
 
-			entityOfSource[ev.Source] = ev.Entity
+			entitiesBySource[ev.Source] = ev.Entity
 		case EventTypeUnset:
 			if ok {
-				if _, found := entityOfSource[ev.Source]; found {
+				if _, found := entitiesBySource[ev.Source]; found {
 					telemetry.StoredEntities.Dec(string(meta.Kind), string(ev.Source))
 				}
 
-				delete(entityOfSource, ev.Source)
+				delete(entitiesBySource, ev.Source)
 
-				if len(entityOfSource) == 0 {
+				if len(entitiesBySource) == 0 {
 					delete(entitiesOfKind, meta.ID)
 				}
 			}
@@ -452,15 +452,15 @@ func (s *store) handleEvents(evs []CollectorEvent) {
 				continue
 			}
 
-			entityOfSource, ok := s.store[entityID.Kind][entityID.ID]
-			entitySources, _ := filter.SelectSources(entityOfSource.sources())
+			entitiesBySource, ok := s.store[entityID.Kind][entityID.ID]
+			entitySources, _ := filter.SelectSources(entitiesBySource.sources())
 
 			if ev.Type == EventTypeSet && ok {
 				// setting an entity is straight forward
 				filteredEvents = append(filteredEvents, Event{
 					Type:    EventTypeSet,
 					Sources: entitySources,
-					Entity:  entityOfSource.merge(entitySources),
+					Entity:  entitiesBySource.merge(entitySources),
 				})
 				continue
 			}
