@@ -30,6 +30,50 @@ const (
 	eventChBufferSize      = 50
 )
 
+// Store is the central storage of metadata about workloads.
+//
+// Typically there is only one instance, accessed via GetGlobalStore.
+type Store interface {
+	// Start starts the store, asynchronously initializing collectors and
+	// beginning to gather workload data.  This is typically called during
+	// agent startup.
+	Start(ctx context.Context)
+
+	// Subscribe subscribes the caller to events representing changes to the
+	// store, limited to events matching the filter.  The name is used for
+	// telemetry and debugging.
+	//
+	// The first message on the channel is special: it contains an EventTypeSet
+	// event for each entity currently in the store.  If the Subscribe call
+	// occurs during agent startup, then it is safe to assume that entities
+	// referenced in the first message were running before the agent started.
+	//
+	// When more than one source provides information about an entity in a
+	// EventTypeSet event, the information from all sources included by the
+	// filter will be merged into one entity, and the event's Sources property
+	// will contain the names of all associated sources.
+	//
+	// EventTypeUnset events contain only information from a single source, and
+	// the entity contains only the information provided by that source.  An unset
+	// event is sent as each source removes its information for an entity, so an
+	// entity with multiple sources may result in multiple unset events.
+	//
+	// See the documentation for EventBundle regarding appropropriate handling
+	// for messages on this channel.
+	Subscribe(name string, filter *Filter) chan EventBundle
+
+	// Unsubscribe reverses the effect of Subscribe.
+	Unsubscribe(ch chan EventBundle)
+
+	GetContainer(id string) (*Container, error)
+	ListContainers() ([]*Container, error)
+	GetKubernetesPod(id string) (*KubernetesPod, error)
+	GetKubernetesPodForContainer(containerID string) (*KubernetesPod, error)
+	GetECSTask(id string) (*ECSTask, error)
+	Notify(events []CollectorEvent)
+	Dump(verbose bool) WorkloadDumpResponse
+}
+
 type subscriber struct {
 	name   string
 	ch     chan EventBundle
