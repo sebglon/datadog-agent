@@ -30,6 +30,9 @@ func LoadComponents(confdPath string) {
 	if flavor.GetFlavor() != flavor.ClusterAgent {
 		workloadmeta.GetGlobalStore().Start(context.Background())
 
+		// uncomment this to dump all workloadmeta events as debug logs
+		//dumper.Enable()
+
 		// start the tagger. must be done before autodiscovery, as it needs to
 		// be the first subscribed to metadata store to avoid race conditions.
 		tagger.SetDefaultTagger(local.NewTagger(collectors.DefaultCatalog))
