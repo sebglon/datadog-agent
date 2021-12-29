@@ -272,10 +272,41 @@ func TestActionSetVariable(t *testing.T) {
 						123,
 					},
 				},
+			}, {
+				Set: &SetDefinition{
+					Name:   "var7",
+					Append: true,
+					Value: []string{
+						"aaa",
+					},
+				},
+			}, {
+				Set: &SetDefinition{
+					Name:   "var8",
+					Append: true,
+					Value: []int{
+						123,
+					},
+				},
+			}, {
+				Set: &SetDefinition{
+					Name:  "var9",
+					Field: "open.filename",
+				},
 			}},
 		}, {
-			ID:         "test_rule2",
-			Expression: `open.filename == "/tmp/test2" && ${var1} == true && "${var2}" == "value" && ${var2} == "value" && ${var3} == 123 && ${process.var4} == 123 && "val1" in ${var5} && 123 in ${var6}`,
+			ID: "test_rule2",
+			Expression: `open.filename == "/tmp/test2" && ` +
+				`${var1} == true && ` +
+				`"${var2}" == "value" && ` +
+				`${var2} == "value" && ` +
+				`${var3} == 123 && ` +
+				`${process.var4} == 123 && ` +
+				`"val1" in ${var5} && ` +
+				`123 in ${var6} && ` +
+				`"aaa" in ${var7} && ` +
+				`123 in ${var8} && ` +
+				`${var9} == "/tmp/test"`,
 		}},
 	}
 
