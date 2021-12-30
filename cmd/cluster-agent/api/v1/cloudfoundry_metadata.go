@@ -9,7 +9,6 @@ package v1
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -18,12 +17,27 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type CFApplication struct {
+	GUID           string
+	Name           string
+	SpaceGUID      string
+	SpaceName      string
+	OrgName        string
+	OrgGUID        string
+	Instances      int
+	Buildpacks     []string
+	DiskQuota      int
+	TotalDiskQuota int
+	Memory         int
+	TotalMemory    int
+	Labels         map[string]string
+	Annotations    map[string]string
+}
+
 func installCloudFoundryMetadataEndpoints(r *mux.Router) {
 	r.HandleFunc("/tags/cf/apps/{nodeName}", getCFAppsMetadataForNode).Methods("GET")
-	r.HandleFunc("/cf/apps", listCFApplications).Methods("GET")
-	r.HandleFunc("/cf/spaces", listCFSpaces).Methods("GET")
-	r.HandleFunc("/cf/orgs", listCFOrgs).Methods("GET")
-	r.HandleFunc("/cf/processes", listCFProcesses).Methods("GET")
+	r.HandleFunc("/cf/apps/{guid}", getCFApplication).Methods("GET")
+	r.HandleFunc("/cf/apps", getCFApplications).Methods("GET")
 }
 
 func installKubernetesMetadataEndpoints(r *mux.Router) {}
@@ -73,23 +87,23 @@ func getCFAppsMetadataForNode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// listCFApplications is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry applications
-// It return a list of V3 cloudfoundry applications
-func listCFApplications(w http.ResponseWriter, r *http.Request) {
+// getCFApplications is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry applications
+// It return a list of CFApplications
+func getCFApplications(w http.ResponseWriter, r *http.Request) {
 	ccCache, err := cloudfoundry.GetGlobalCCCache()
 	if err != nil {
 		log.Errorf("Could not retrieve CC cache: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc("listCFApplications", strconv.Itoa(http.StatusInternalServerError))
+		apiRequests.Inc("getCFApplications", strconv.Itoa(http.StatusInternalServerError))
 		return
 	}
 
-	apps, err := ccCache.GetApps()
+	apps, err := ccCache.GetCFApplications()
 	if err != nil {
 		log.Errorf("Error getting applications: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		apiRequests.Inc(
-			"listCFApplications",
+			"getCFApplications",
 			strconv.Itoa(http.StatusInternalServerError),
 		)
 		return
@@ -100,7 +114,7 @@ func listCFApplications(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("Could not process CF applications: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		apiRequests.Inc(
-			"listCFApplications",
+			"getCFApplications",
 			strconv.Itoa(http.StatusInternalServerError),
 		)
 		return
@@ -109,136 +123,52 @@ func listCFApplications(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(appsBytes)
 		apiRequests.Inc(
-			"listCFApplications",
+			"getCFApplications",
 			strconv.Itoa(http.StatusOK),
 		)
 		return
 	}
 }
 
-// listCFSpaces is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry spaces
-// It return a list of V3 cloudfoundry spaces
-func listCFSpaces(w http.ResponseWriter, r *http.Request) {
+// getCFApplication is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry applications
+// It return a list of CFApplications
+func getCFApplication(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	guid := vars["guid"]
 	ccCache, err := cloudfoundry.GetGlobalCCCache()
 	if err != nil {
 		log.Errorf("Could not retrieve CC cache: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc("listCFSpaces", strconv.Itoa(http.StatusInternalServerError))
+		apiRequests.Inc("getCFApplication", strconv.Itoa(http.StatusInternalServerError))
 		return
 	}
 
-	spaces, err := ccCache.GetSpaces()
+	app, err := ccCache.GetCFApplication(guid)
 	if err != nil {
-		log.Errorf("Error getting spaces: %v", err)
+		log.Errorf("Error getting application: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		apiRequests.Inc(
-			"listCFSpaces",
+			"getCFApplication",
 			strconv.Itoa(http.StatusInternalServerError),
 		)
 		return
 	}
 
-	spacesBytes, err := json.Marshal(spaces)
+	appBytes, err := json.Marshal(app)
 	if err != nil {
-		log.Errorf("Could not process CF spaces: %v", err)
+		log.Errorf("Could not process CF application: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		apiRequests.Inc(
-			"listCFSpaces",
+			"getCFApplication",
 			strconv.Itoa(http.StatusInternalServerError),
 		)
 		return
 	}
-	if len(spacesBytes) > 0 {
+	if len(appBytes) > 0 {
 		w.WriteHeader(http.StatusOK)
-		w.Write(spacesBytes)
+		w.Write(appBytes)
 		apiRequests.Inc(
-			"listCFSpaces",
-			strconv.Itoa(http.StatusOK),
-		)
-		return
-	}
-}
-
-// listCFOrgs is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry orgs
-// It return a list of V3 cloudfoundry orgs
-func listCFOrgs(w http.ResponseWriter, r *http.Request) {
-	ccCache, err := cloudfoundry.GetGlobalCCCache()
-	if err != nil {
-		log.Errorf("Could not retrieve CC cache: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc("listCFOrgs", strconv.Itoa(http.StatusInternalServerError))
-		return
-	}
-
-	orgs, err := ccCache.GetOrgs()
-	if err != nil {
-		log.Errorf("Error getting organizations: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc(
-			"listCFOrgs",
-			strconv.Itoa(http.StatusInternalServerError),
-		)
-		return
-	}
-
-	orgsBytes, err := json.Marshal(orgs)
-	if err != nil {
-		log.Errorf("Could not process CF organizations: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc(
-			"listCFOrgs",
-			strconv.Itoa(http.StatusInternalServerError),
-		)
-		return
-	}
-	if len(orgsBytes) > 0 {
-		w.WriteHeader(http.StatusOK)
-		w.Write(orgsBytes)
-		apiRequests.Inc(
-			"listCFOrgs",
-			strconv.Itoa(http.StatusOK),
-		)
-		return
-	}
-}
-
-// listCFProcesses is only used when the PCF firehose nozzle hits the DCA for the list of cloudfoundry processes
-// It return a list of cloudfoundry processes
-func listCFProcesses(w http.ResponseWriter, r *http.Request) {
-	ccCache, err := cloudfoundry.GetGlobalCCCache()
-	if err != nil {
-		log.Errorf("Could not retrieve CC cache: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc("listCFProcesses", strconv.Itoa(http.StatusInternalServerError))
-		return
-	}
-
-	processes, err := ccCache.GetProcesses()
-	if err != nil {
-		log.Errorf("Error getting processes: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc(
-			"listCFProcesses",
-			strconv.Itoa(http.StatusInternalServerError),
-		)
-		return
-	}
-
-	processesBytes, err := json.Marshal(processes)
-	if err != nil {
-		log.Errorf("Could not process CF processes: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		apiRequests.Inc(
-			"listCFProcesses",
-			strconv.Itoa(http.StatusInternalServerError),
-		)
-		return
-	}
-	if len(processesBytes) > 0 {
-		w.WriteHeader(http.StatusOK)
-		w.Write(processesBytes)
-		apiRequests.Inc(
-			"listCFProcesses",
+			"getCFApplication",
 			strconv.Itoa(http.StatusOK),
 		)
 		return
